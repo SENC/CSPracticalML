@@ -1,0 +1,127 @@
+---
+title: "Practical Machine Learning Project"
+author: "Senthil"
+date: "25 July 2015"
+output: html_document
+---
+
+Background:
+
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3gpuuDA00
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. 
+
+Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3gpv00eUD
+
+
+Objective:
+Predict the manner in which they did the exercise.(i.e) Classe = 'A'- Exactly according to Specification or common mistakes - 'B' throw elbow to the front, 'C' lifting the dumbbell only halfway, 'D' lowering the dumbbell only halfway and 'E' throwing the hips to the front  
+
+Data :
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+
+
+
+```{r}
+trainingdata<- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+testingdata <-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+
+```
+
+
+Explorative Data Analysis
+  With the Summary and Head command got to know total 160-1 variables (predictors) and 19622 numbers of instances
+  With the quick snap at summary(trainingdata) output could see lots of NA values and un related variables like timestamp,divby zero. With the na.remove function removed all NA valuesDIM
+  
+  ```{r}
+  traindatacleaned<- na.omit(trainingdata)
+  dim(traindatacleaned)
+  
+  ```
+after omitting NA vlaues got 406 rows and 160 variables.
+
+Note: actually i tried to train the model without preprocess with the intial training set (70%) but the it was running continuously and no putput even after 1 hr. its clearly shows the significance of data preprocessing
+
+```{r}
+library(caret)
+ #Remove near Zero Variance columns
+traindatacleaned <-traindatacleaned[,-nearZeroVar(traindatacleaned)]
+
+
+ #Remove high corelated features
+correlationMatrix<- abs(cor(traindatacleaned[, sapply(traindatacleaned, is.numeric)]))
+traindatacleaned <-traindatacleaned[, -findCorrelation(correlationMatrix,cutoff=0.90)]
+```
+Model :
+Splitted the training data to two data sets 75% training and 25% for test validation
+
+```{r}
+library(caret)
+set.seed(17241)
+inTrainIndex<- createDataPartition(y=traindatacleaned$classe,p=0.75,list=FALSE)
+training <- traindatacleaned[inTrainIndex,]
+testing <- traindatacleaned[-inTrainIndex,]
+
+
+```
+Tried to train the model with Linear regression, PCA and Random forest just to try all and conclude best model based on the accuracy
+
+```{r}
+# define training control to use 5-fold cross validation
+train_control <- trainControl(method="cv", number=5)
+
+FirstModel <- train (classe ~ ., data=training, method="rf", trControl=train_control)
+
+summary(FirstModel)
+FirstModel$finalModel
+```
+
+cross validation- Out of sample error
+predictiononTest<-predict(FirstModel,newdata=testing)
+confusionMatrix <-confusionMatrix(predictionTest,testing$classe)
+
+
+You can also embed plots
+
+```{r, echo=FALSE}
+plot(FirstModel)
+```
+
+The following plot shows the resulting Accuracy as a function of the number of randomly selected predictors:
+
+```{r}
+plot(FirstModel, metric="Accuracy")
+```
+The following plot shows the relative importance of the top 25 variables in the final model:
+```{r}
+plot(varImp(FirstModel), top=25)
+```
+
+Final Prediction
+Now actual prediction on Test data provided in this exercise . just take the actual features and stored as colnames and take those columns alone in testing data as actual test data as below
+```{r}
+selectedFeatureColumn<-colnames(training)
+actualTestdata<-testingdata[,colnames(testingdata)%in% selectedFeatureColumn]
+dim(actualTestdata)
+finalPredictedModel <- predict(FirstModel, newdata=actualTestdata)
+finalPredictedModel
+```
+Since rf method yields high accuracy conclude this would be a the best predict model
+
+plot(finalPredictedModel)
