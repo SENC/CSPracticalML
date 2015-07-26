@@ -47,92 +47,9 @@ testingdata <-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/
 
 Explorative Data Analysis
   With the Summary and Head command got to know total 160-1 variables (predictors) and 19622 numbers of instances
-  With the quick snap at summary(trainingdata) output could see lots of NA values and un related variables like timestamp,divby zero. With the na.remove function removed all NA valuesDIM
-  
-  ```{r}
-  traindatacleaned<- na.omit(trainingdata)
-  dim(traindatacleaned)
-  
-  ```
-after omitting NA vlaues got 406 rows and 160 variables.
-
-Note: actually i tried to train the model without preprocess with the intial training set (70%) but the it was running continuously and no putput even after 1 hr. its clearly shows the significance of data preprocessing
+  With the quick snap at summary(trainingdata) output could see lots of NA values and un related variables like timestamp,divby zero like timestamp, stddev and etc. So took new trainingdata and Testingdata with following variales as a predictor .  
 
 ```{r}
-library(caret)
- #Remove near Zero Variance columns
-traindatacleaned1 <-traindatacleaned[,-nearZeroVar(traindatacleaned)]
-
-
- #Remove high corelated features
-correlationMatrix<- abs(cor(traindatacleaned[, sapply(traindatacleaned, is.numeric)]))
-traindatacleaned <-traindatacleaned[, -findCorrelation(correlationMatrix,cutoff=0.90)]
-```
-Model :
-Splitted the training data to two data sets 75% training and 25% for test validation
-
-```{r, echo=FALSE}
-library(caret)
-set.seed(17241)
-inTrainIndex<- createDataPartition(y=traindatacleaned$classe,p=0.75,list=FALSE)
-training <- traindatacleaned[inTrainIndex,]
-testing <- traindatacleaned[-inTrainIndex,]
-
-
-```
-Tried to train the model with Linear regression, PCA and Random forest just to try all and conclude best model based on the accuracy. Since this problem need more accuracy chosen Random Forest since Lm just given 42%.
-
-```{r, echo=FALSE}
-# define training control to use 5-fold cross validation
-train_control <- trainControl(method="cv", number=5)
-
-FirstModel <- train (classe ~ ., data=training, method="rf", trControl=train_control)
-
-summary(FirstModel)
-FirstModel$finalModel
-``` 
-In sample error rate 1.3%. 
-
-cross validation- Out of sample error
-```{r, echo=FALSE}
-predictionTest<-predict(FirstModel,newdata=testing)
-confusionMatrix <-confusionMatrix(predictionTest,testing$classe)
-confusionMatrix
-```
-You can also embed plots
-
-```{r, echo=FALSE}
-plot(FirstModel)
-```
-
-The following plot shows the resulting Accuracy as a function of the number of randomly selected predictors:
-
-```{r, echo=FALSE}
-plot(FirstModel, metric="Accuracy")
-```
-The following plot shows the relative importance of the top 25 variables in the final model:
-```{r, echo=FALSE}
-plot(varImp(FirstModel), top=25)
-```
-
-Final Prediction
-
-Now actual prediction on Test data provided in this exercise . just take the actual features and stored as colnames and take those columns alone in testing data as actual test data as below
-```{r, echo=FALSE}
-selectedFeatureColumn<-colnames(training)
-actualTestdata<-testingdata[,colnames(testingdata) %in% selectedFeatureColumn]
-
-#FinalModelRf<- predict(FirstModel,newdata = actualTestdata)
-```
-
-unfortunately, predict function taking very long time and finally end up with some error message -almost after 3 hrs.
-checked once again and suspect during data cleaning something got messed up since when i start predicting with acual Test data. 
-
-So tried different approach since nearing project submission time.
-
-Did data descriptive analysis once again and as already highlighted lots of variables has N/A and variables which may not be a predictor category like timestamp, stddev and etc. So took new trainingdata and Testingdata with following variales as a predictor
-
-```{r, echo=FALSE}
 trainingdataNew<-trainingdata[,c("classe","num_window","roll_belt","pitch_belt","yaw_belt","total_accel_belt","roll_arm","pitch_arm","yaw_arm","roll_dumbbell","pitch_dumbbell","yaw_dumbbell")]
 head(trainingdataNew)
 testingdataNew <-testingdata[,c("num_window","roll_belt","pitch_belt","yaw_belt","total_accel_belt","roll_arm","pitch_arm","yaw_arm","roll_dumbbell","pitch_dumbbell","yaw_dumbbell")]
@@ -140,9 +57,13 @@ testingdataNew <-testingdata[,c("num_window","roll_belt","pitch_belt","yaw_belt"
 dim(trainingdataNew);dim(testingdataNew)
 ```
 
-Seed has been set as 17241 and Data slicing as 75%-25% training data 
+Seed has been set as 17241 and Data slicing as 75%-25% training data .  
 
-```{r, echo=FALSE}
+Tried with lm but accuracy was 42%  hence tried random forest since it has more accuracy though its time taken.
+Set k-fold to 5 and set as trian control and trained with inital 75% training set.
+
+```{r}
+library(caret)
 set.seed(17241)
 inTrainIndex<- createDataPartition(y=trainingdataNew$classe,p=0.75,list=FALSE)
 training <- trainingdataNew[inTrainIndex,]
@@ -152,19 +73,20 @@ train_control <- trainControl(method="cv", number=5)
 
 FirstModel <- train (classe ~ ., data=training, method="rf", trControl=train_control)
 
-summary(FirstModel)
+#summary(FirstModel)
 ```
-Cross validation using the 25% the test data and using confusion matrix confirmed no outfit and accuracy of the model built is satisfactory - got 99%. 
-Now, with the actual test data (20 samples) get the final predict model and result are predicted perfect
+Cross validation using the 25% the test data and using confusion matrix confirmed no outfit and accuracy of the model and confidence of Interval is satisfactory - Got 99% accuracy. 
+
+Now, with the actual test data (20 samples) get the final predict model and results are predicted with 99% accuracy.Here is the statistics
 ```{r, echo=FALSE}
 predictionTest<-predict(FirstModel,newdata=testing)
-predictionTest
-dim(testing)
+#predictionTest
+#dim(testing)
 confusionMatrix <-confusionMatrix(predictionTest,testing$classe)
 confusionMatrix
 plot(FirstModel, metric="Accuracy")
 
 finalPredictedModel <- predict(FirstModel, newdata=testingdataNew)
-finalPredictedModel
-#plot(finalPredictedModel)
+#finalPredictedModel
+plot(finalPredictedModel)
 ```
